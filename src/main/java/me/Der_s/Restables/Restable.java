@@ -1,5 +1,6 @@
 package me.Der_s.Restables;
 
+import net.minestom.server.MinecraftServer;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.entity.*;
@@ -106,6 +107,7 @@ public abstract class Restable {
             callbacks.put(aClass, new HashMap<>());
             node.addListener(aClass, Restable::handle);
         });
+        MinecraftServer.getGlobalEventHandler().addChild(node);
     }
 
     public static void registerCustomEvent(Class<? extends Event> event) {

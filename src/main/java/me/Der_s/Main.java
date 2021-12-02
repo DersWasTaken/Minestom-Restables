@@ -1,5 +1,6 @@
 package me.Der_s;
 
+import me.Der_s.Restables.Restable;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.player.PlayerLoginEvent;
@@ -28,6 +29,7 @@ public class Main {
         globalEventHandler.addListener(PlayerLoginEvent.class, event -> {
             event.setSpawningInstance(world);
         });
+        Restable.enableDefaultEvents();
     }
 
     public static class VoidGen implements ChunkGenerator {
