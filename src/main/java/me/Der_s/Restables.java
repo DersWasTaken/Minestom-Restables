@@ -1,6 +1,7 @@
-package me.Der_s.Restables;
+package me.Der_s;
 
 import net.minestom.server.MinecraftServer;
+import net.minestom.server.entity.Entity;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventNode;
 import net.minestom.server.event.entity.*;
@@ -10,14 +11,14 @@ import net.minestom.server.event.item.*;
 import net.minestom.server.event.player.*;
 import net.minestom.server.event.server.ClientPingServerEvent;
 import net.minestom.server.event.server.ServerListPingEvent;
+import net.minestom.server.event.trait.EntityEvent;
 
 import java.util.*;
-import java.util.function.Function;
 
-public abstract class Restable {
+public class Restables<T extends Event> {
 
-    protected static Map<Class<? extends Event>, HashMap<UUID, Function>> callbacks = new HashMap<>();
-    public static EventNode<Event> node = EventNode.all("node");
+    public static final Map<Class<? extends Event>, List<Restables<? extends Event>>> callbacks = new HashMap<>();
+    public static final EventNode<Event> node = EventNode.all("node");
 
     public static Set<Class<? extends Event>> events = Set.of(
             //Entity Events
@@ -104,44 +105,55 @@ public abstract class Restable {
 
     public static void enableDefaultEvents() {
         events.forEach(aClass -> {
-            callbacks.put(aClass, new HashMap<>());
-            node.addListener(aClass, Restable::handle);
+            callbacks.put(aClass, new ArrayList<>());
+            node.addListener(aClass, Restables::handleGlobal);
         });
         MinecraftServer.getGlobalEventHandler().addChild(node);
     }
 
-    public static void registerCustomEvent(Class<? extends Event> event) {
-        callbacks.put(event, new HashMap<>());
-        node.addListener(event, Restable::handle);
+    protected Restable callback;
+    protected UUID[] entitys;
+    protected Class<T> clazz;
+
+    public Restables(Class<T> clazz, Restable<T> callback, Entity... entity) {
+        this.entitys = Arrays.stream(entity).map(Entity::getUuid).toArray(UUID[]::new);
+        this.callback = callback;
+        this.clazz = clazz;
+
+        callbacks.get(clazz).add(this);
     }
 
-    public enum Result {
-        CONTINUE,
-        REMOVE;
-    }
+    private static <T extends Event> void handleGlobal(T e) {
+        Class<? extends net.minestom.server.event.Event> clazzz = e.getClass();
+        if(callbacks.get(clazzz).isEmpty()) return;
 
-    private static <T extends Event> void handle(T Event) {
-        Class<? extends net.minestom.server.event.Event> clazz = Event.getClass();
-        if(callbacks.get(clazz).isEmpty()) return;
-        HashMap<UUID, Function> ev = callbacks.get(clazz);
-
+        List<Restables<? extends Event>> restables = callbacks.get(clazzz);
         try {
-            ev.entrySet().forEach(functionEntry -> {
-                UUID uuid = functionEntry.getKey();
-                Function f = functionEntry.getValue();
-                if (uuid == null) {
-                    if (f.apply(Event) == Result.REMOVE) {
-                        ev.remove(f);
-                    }
-                } else {
-                    if (f.apply(Event) == Result.REMOVE) {
-                        ev.remove(uuid, f);
-                    }
+            restables.forEach(restablesEventIMPL -> {
+                Restable callback = (Restable) restablesEventIMPL.callback;
+                UUID[] entitys = restablesEventIMPL.entitys;
+                Class<? extends Event> clazz = restablesEventIMPL.clazz;
+                if (e instanceof EntityEvent && entitys.length != 0) {
+                    EntityEvent event = (EntityEvent) e;
+                    UUID eUUID = event.getEntity().getUuid();
+                    if (!Arrays.stream(entitys).anyMatch(uuid -> uuid == eUUID)) return;
+                }
+                if (!callback.callback(e)) {
+                    callbacks.get(clazz).remove(restablesEventIMPL);
+                    callback = null;
+                    entitys = null;
+                    clazz = null;
                 }
             });
-        } catch (ConcurrentModificationException e) {
-            //ok
+        } catch (ConcurrentModificationException exception) {
+            //ignore it doesnt do shit i just cant be bothered to fix it
         }
+
+    }
+
+    public interface Restable<T extends Event> {
+        boolean callback(T e);
     }
 
 }
+
