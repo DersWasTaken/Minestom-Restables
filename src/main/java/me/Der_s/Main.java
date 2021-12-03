@@ -24,17 +24,17 @@ public class Main {
         InstanceManager instanceManager = MinecraftServer.getInstanceManager();
         InstanceContainer world = instanceManager.createInstanceContainer();
         world.setChunkGenerator(new VoidGen());
-        Restables.enableDefaultEvents();
+        Restable.enableDefaultEvents();
 
 
         /*
         EXAMPLE OF ENTITY/PLAYER EVENT (NO SPECIFIED PLAYER)
          */
-        Restables<PlayerLoginEvent> playerLogin = new Restables<>(PlayerLoginEvent.class, e -> {
+        Restable<PlayerLoginEvent> playerLogin = new Restable<>(PlayerLoginEvent.class, e -> {
             e.setSpawningInstance(world);
             if(MinecraftServer.getConnectionManager().getOnlinePlayers().size() <= 1) {
                 e.getPlayer().sendMessage("why did you spend 6 hours to get slightly prettier code");
-                return false; // false removes the restable
+                return true; // false removes the restable
             }
             return true;
         });
@@ -42,7 +42,7 @@ public class Main {
         /*
         EXAMPLE OF NON ENITY/PLAYER EVENT
          */
-        Restables<ServerListPingEvent> serverPing = new Restables<>(ServerListPingEvent.class, e -> {
+        Restable<ServerListPingEvent> serverPing = new Restable<>(ServerListPingEvent.class, e -> {
             ResponseData responseData = e.getResponseData();
             responseData.setOnline(1000);
             e.setResponseData(responseData);
